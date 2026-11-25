@@ -1,0 +1,7 @@
+node_modules/
+# recordings live next to each project's script, never in this repo
+**/demo-voice/
+**/voice/
+*.wav
+*.webm
+*.ogg

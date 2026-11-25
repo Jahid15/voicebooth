@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VoiceBooth</title>
+<style>
+@font-face { font-family: 'Purno'; src: url('/font/purno.ttf') format('truetype'); font-weight: 400; }
+:root {
+  --bg: #101114; --panel: #181a1f; --line: #2a2d35; --text: #f2efe8; --dim: #8b8f99;
+  --rec: #ff4d4d; --good: #3ddc84; --warn: #ffb347; --accent: #7cc4ff;
+  --bn: 'Purno', 'Noto Sans Bengali', 'Nirmala UI', 'Vrinda', sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, var(--bn); }
+button { font: inherit; color: inherit; cursor: pointer; border: 1px solid var(--line); background: var(--panel); border-radius: 10px; padding: 10px 16px; }
+button:hover { border-color: #444a55; }
+button:disabled { opacity: .4; cursor: default; }
+.app { display: grid; grid-template-columns: 290px 1fr; height: 100%; }
+
+/* sidebar */
+aside { border-right: 1px solid var(--line); overflow-y: auto; background: #0c0d10; }
+aside h1 { font-size: 15px; margin: 0; padding: 16px; border-bottom: 1px solid var(--line); font-family: var(--bn); font-weight: 400; }
+.progress { padding: 10px 16px; font-size: 13px; color: var(--dim); border-bottom: 1px solid var(--line); }
+.bar { height: 4px; background: var(--line); border-radius: 2px; margin-top: 6px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--good); width: 0; transition: width .3s; }
+.li { display: flex; gap: 10px; padding: 10px 16px; cursor: pointer; border-bottom: 1px solid #16181d; font-size: 14px; align-items: flex-start; }
+.li:hover { background: #15171c; }
+.li.cur { background: #1c2230; box-shadow: inset 3px 0 0 var(--accent); }
+.li .st { width: 18px; flex: none; text-align: center; color: var(--dim); }
+.li.done .st { color: var(--good); }
+.li .tx { font-family: var(--bn); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #c9c6bf; }
+.sec { padding: 12px 16px 4px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+
+/* main */
+main { display: flex; flex-direction: column; min-width: 0; }
+.top { display: flex; gap: 10px; align-items: center; padding: 12px 20px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.top .sp { flex: 1; }
+.top select { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 8px; max-width: 320px; }
+.top label { font-size: 13px; color: var(--dim); display: flex; gap: 6px; align-items: center; }
+.stage { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 30px 6vw; text-align: center; gap: 22px; min-height: 0; }
+.counter { color: var(--dim); font-size: 14px; letter-spacing: .1em; }
+.reaction { display: inline-flex; align-items: center; gap: 14px; background: #241f14; border: 1px solid #4a3b18; color: #ffd98a; border-radius: 999px; padding: 10px 26px; font-family: var(--bn); font-size: 26px; }
+.reaction .em { font-size: 42px; line-height: 1; }
+.reaction:empty { display: none; }
+.text { font-family: var(--bn); font-size: clamp(34px, 4.6vw, 64px); line-height: 1.45; max-width: 1200px; }
+.note { color: var(--dim); font-family: var(--bn); font-size: 18px; }
+.note:empty { display: none; }
+.next { color: #8a8e98; font-family: var(--bn); font-size: 20px; max-width: 1000px; }
+.next b { color: #9a9ea8; font-weight: 400; font-family: 'Segoe UI', sans-serif; font-size: 12px; letter-spacing: .1em; margin-right: 8px; }
+
+/* controls */
+.ctrl { border-top: 1px solid var(--line); padding: 18px 20px 22px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.row { display: flex; gap: 14px; align-items: center; justify-content: center; flex-wrap: wrap; }
+.recbtn { width: 96px; height: 96px; border-radius: 50%; border: 4px solid #3a2224; background: #2a1517; display: grid; place-items: center; padding: 0; }
+.recbtn i { width: 40px; height: 40px; border-radius: 50%; background: var(--rec); transition: all .15s; }
+.recbtn.on { border-color: var(--rec); animation: pulse 1.2s infinite; }
+.recbtn.on i { border-radius: 8px; width: 34px; height: 34px; }
+.recbtn.busy i { background: var(--dim); }
+@keyframes pulse { 50% { box-shadow: 0 0 0 14px rgba(255,77,77,.12); } }
+.meter { width: 340px; height: 10px; background: #0b0c0f; border-radius: 5px; overflow: hidden; border: 1px solid var(--line); }
+.meter i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--good) 0 70%, var(--warn) 70% 88%, var(--rec) 88%); }
+.timer { font-variant-numeric: tabular-nums; color: var(--dim); min-width: 60px; }
+.big { font-size: 17px; padding: 14px 24px; border-radius: 12px; }
+.good { background: #12301f; border-color: #1f6b41; color: #9ff0c3; }
+.retake { background: #33241a; border-color: #6b4a1f; color: #ffd0a0; }
+.takes { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.take { font-size: 13px; padding: 7px 12px; border-radius: 8px; }
+.take.ch { border-color: var(--good); color: var(--good); }
+.take.clip { border-color: var(--rec); }
+.hint { font-size: 12px; color: #8b8f99; }
+.hint kbd { border: 1px solid #333; border-radius: 4px; padding: 1px 6px; font-family: inherit; color: var(--dim); }
+.msg { min-height: 20px; font-size: 14px; color: var(--warn); font-family: var(--bn); }
+.done-panel { text-align: center; font-family: var(--bn); }
+.done-panel audio { margin-top: 14px; width: 420px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <h1 id="title">VoiceBooth</h1>
+    <div class="progress"><span id="prog">0 / 0</span><div class="bar"><i id="progbar"></i></div></div>
+    <div id="list"></div>
+  </aside>
+  <main>
+    <div class="top">
+      <select id="mic" title="Microphone"></select>
+      <label><input type="checkbox" id="autoplay"> রেকর্ডের পর নিজে শুনবো</label>
+      <label><input type="checkbox" id="autonext" checked> ভালো হলে পরের লাইনে যাও</label>
+      <span class="sp"></span>
+      <button id="export">⬇ পুরো ভয়েস এক্সপোর্ট</button>
+    </div>
+
+    <section class="stage" id="stage">
+      <div class="counter" id="counter"></div>
+      <div class="reaction" id="reaction"></div>
+      <div class="text" id="text"></div>
+      <div class="note" id="note"></div>
+      <div class="next" id="next"></div>
+    </section>
+
+    <section class="ctrl">
+      <div class="row">
+        <button class="big retake" id="retake" title="R">↻ আবার নিন</button>
+        <button class="recbtn" id="rec" title="Space"><i></i></button>
+        <button class="big good" id="good" title="Enter">✓ ভালো হয়েছে</button>
+      </div>
+      <div class="row"><div class="meter"><i id="lvl"></i></div><span class="timer" id="timer">0.0s</span></div>
+      <div class="takes" id="takes"></div>
+      <div class="msg" id="msg"></div>
+      <div class="hint">
+        <kbd>Space</kbd> রেকর্ড / থামাও &nbsp; <kbd>Enter</kbd> ভালো, পরেরটা &nbsp; <kbd>R</kbd> আবার &nbsp;
+        <kbd>P</kbd> শুনুন &nbsp; <kbd>←</kbd><kbd>→</kbd> লাইন বদলান
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let S = null;          // session from server
+let cur = 0;           // current line index
+let rec = null;        // MediaRecorder
+let chunks = [];
+let stream = null, audioCtx = null, analyser = null;
+let recStart = 0, busy = false, player = new Audio();
+
+const ls = (id) => (S.state.lines[id] ||= { takes: [], chosen: null });
+const line = () => S.lines[cur];
+const msg = (t) => ($('msg').textContent = t || '');
+
+async function load() {
+  S = await (await fetch('/api/session')).json();
+  document.title = 'VoiceBooth · ' + S.title;
+  $('title').textContent = S.title;
+  // start on the first line that has no chosen take
+  const firstOpen = S.lines.findIndex((l) => !(S.state.lines[l.id] && S.state.lines[l.id].chosen));
+  cur = firstOpen < 0 ? 0 : firstOpen;
+  render();
+}
+
+function render() {
+  if (!S.lines.length) { $('text').textContent = 'স্ক্রিপ্টে কোনো লাইন নেই।'; return; }
+  const L = line(), st = ls(L.id);
+  const done = S.lines.filter((l) => S.state.lines[l.id] && S.state.lines[l.id].chosen).length;
+  $('prog').textContent = `${done} / ${S.lines.length} লাইন ঠিক`;
+  $('progbar').style.width = (100 * done / S.lines.length) + '%';
+  $('counter').textContent = `${L.section ? L.section + ' · ' : ''}লাইন ${cur + 1} / ${S.lines.length}`;
+  $('reaction').innerHTML = L.reaction || L.emoji ? `<span class="em">${esc(L.emoji)}</span><span>${esc(L.reaction)}</span>` : '';
+  $('text').textContent = L.text;
+  $('note').textContent = L.note;
+  const N = S.lines[cur + 1];
+  $('next').innerHTML = N ? `<b>NEXT</b>${esc(N.text)}` : '<b>শেষ লাইন</b>';
+
+  // sidebar
+  let html = '', lastSec = null;
+  S.lines.forEach((l, i) => {
+    if (l.section && l.section !== lastSec) { html += `<div class="sec">${esc(l.section)}</div>`; lastSec = l.section; }
+    const s = S.state.lines[l.id];
+    const ok = s && s.chosen;
+    const n = s ? s.takes.length : 0;
+    html += `<div class="li ${i === cur ? 'cur' : ''} ${ok ? 'done' : ''}" data-i="${i}">
+      <span class="st">${ok ? '✓' : n ? n : '·'}</span><span class="tx">${esc(l.text)}</span></div>`;
+  });
+  $('list').innerHTML = html;
+  const curEl = $('list').querySelector('.cur');
+  if (curEl) curEl.scrollIntoView({ block: 'nearest' });
+
+  // takes
+  $('takes').innerHTML = st.takes.map((t) =>
+    `<button class="take ${t.n === st.chosen ? 'ch' : ''} ${t.peak_db > -0.5 ? 'clip' : ''}" data-n="${t.n}"
+      title="peak ${t.peak_db} dB${t.peak_db > -0.5 ? ' (clipping!)' : ''}">${t.n === st.chosen ? '✓ ' : '▶ '}Take ${t.n} · ${t.seconds}s</button>`
+  ).join('');
+  $('good').disabled = !st.takes.length || !!rec;
+  $('retake').disabled = !!rec || busy;
+}
+
+function esc(s) { return String(s || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+// ---------- microphone ----------
+async function listMics() {
+  const devs = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'audioinput');
+  const saved = localStorage.getItem('vb.mic');
+  $('mic').innerHTML = devs.map((d) => `<option value="${d.deviceId}" ${d.deviceId === saved ? 'selected' : ''}>${esc(d.label || 'Microphone')}</option>`).join('');
+}
+async function openMic() {
+  if (stream) stream.getTracks().forEach((t) => t.stop());
+  const id = $('mic').value || localStorage.getItem('vb.mic');
+  // Raw mic: no browser cleanup. Noise removal happens later in the edit.
+  stream = await navigator.mediaDevices.getUserMedia({ audio: {
+    deviceId: id ? { exact: id } : undefined, channelCount: 1, sampleRate: 48000,
+    echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+  audioCtx ||= new AudioContext();
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 1024;
+  audioCtx.createMediaStreamSource(stream).connect(analyser);
+  await listMics();
+}
+function meterLoop() {
+  if (analyser) {
+    const a = new Float32Array(analyser.fftSize);
+    analyser.getFloatTimeDomainData(a);
+    let peak = 0; for (const v of a) peak = Math.max(peak, Math.abs(v));
+    const db = peak ? 20 * Math.log10(peak) : -100;
+    $('lvl').style.width = Math.max(0, Math.min(100, (db + 60) / 60 * 100)) + '%';
+  }
+  if (rec) $('timer').textContent = ((performance.now() - recStart) / 1000).toFixed(1) + 's';
+  requestAnimationFrame(meterLoop);
+}
+
+// ---------- recording ----------
+async function startRec() {
+  if (rec || busy) return;
+  player.pause();
+  try { if (!stream) await openMic(); if (audioCtx.state === 'suspended') await audioCtx.resume(); }
+  catch (e) { msg('মাইক খোলা যায়নি: ' + e.message); return; }
+  const type = ['audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/webm'].find((t) => MediaRecorder.isTypeSupported(t)) || '';
+  rec = new MediaRecorder(stream, type ? { mimeType: type, audioBitsPerSecond: 256000 } : undefined);
+  chunks = [];
+  rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+  rec.onstop = upload;
+  rec.start();
+  recStart = performance.now();
+  $('rec').classList.add('on');
+  msg('');
+  render();
+}
+function stopRec() { if (rec && rec.state === 'recording') rec.stop(); }
+
+async function upload() {
+  const type = rec.mimeType || 'audio/webm';
+  rec = null; busy = true;
+  $('rec').classList.remove('on'); $('rec').classList.add('busy');
+  render();
+  const L = line();
+  try {
+    const r = await fetch('/api/take?line=' + encodeURIComponent(L.id), { method: 'POST', headers: { 'Content-Type': type }, body: new Blob(chunks, { type }) });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error);
+    S.state = j.state;
+    if (j.take.peak_db > -0.5) msg('⚠ আওয়াজ ফেটে গেছে (clipping)। মাইক থেকে একটু দূরে গিয়ে আবার নিন।');
+    else if (j.take.peak_db < -30) msg('⚠ আওয়াজ খুব কম। একটু জোরে বা মাইকের কাছে গিয়ে বলুন।');
+    if ($('autoplay').checked) play(j.take.n);
+  } catch (e) { msg('সেভ হয়নি: ' + e.message); }
+  busy = false; $('rec').classList.remove('busy');
+  render();
+}
+
+function play(n) {
+  const st = ls(line().id);
+  const t = st.takes.find((k) => k.n === (n ?? st.chosen ?? st.takes.at(-1)?.n));
+  if (!t) return;
+  player.src = '/takes/' + encodeURIComponent(t.file) + '?v=' + t.at;
+  player.play();
+}
+
+async function choose(n) {
+  const r = await fetch('/api/choose', { method: 'POST', body: JSON.stringify({ line: line().id, take: n }) });
+  S.state = (await r.json()).state;
+}
+async function good() {
+  if (rec || busy) return;
+  const st = ls(line().id);
+  if (!st.takes.length) return;
+  await choose(st.takes.at(-1).n); // the take just recorded
+  msg('');
+  if ($('autonext').checked && cur < S.lines.length - 1) cur++;
+  else if (cur === S.lines.length - 1) msg('সব লাইন শেষ! এখন "পুরো ভয়েস এক্সপোর্ট" চাপুন।');
+  render();
+}
+function retake() { if (!rec && !busy) startRec(); }
+function go(d) { if (rec || busy) return; cur = Math.max(0, Math.min(S.lines.length - 1, cur + d)); msg(''); render(); }
+
+async function exportAll() {
+  const j = await (await fetch('/api/export', { method: 'POST' })).json();
+  if (j.error) return msg(j.error);
+  $('stage').innerHTML = `<div class="done-panel"><div style="font-size:40px">🎉</div>
+    <div style="font-size:28px">পুরো ভয়েস ওভার রেডি: ${j.seconds}s</div>
+    ${j.missing.length ? `<div class="msg">বাকি আছে: ${j.missing.join(', ')}</div>` : ''}
+    <div class="note">${esc(j.file)}</div>
+    <audio controls src="/voiceover_full.wav?v=${Date.now()}"></audio>
+    <div style="margin-top:16px"><button onclick="location.reload()">← লাইনে ফিরে যান</button></div></div>`;
+}
+
+// ---------- wiring ----------
+$('rec').onclick = () => (rec ? stopRec() : startRec());
+$('good').onclick = good;
+$('retake').onclick = retake;
+$('export').onclick = exportAll;
+$('mic').onchange = async () => { localStorage.setItem('vb.mic', $('mic').value); await openMic(); };
+$('autoplay').checked = localStorage.getItem('vb.autoplay') === '1';
+$('autoplay').onchange = () => localStorage.setItem('vb.autoplay', $('autoplay').checked ? '1' : '0');
+$('list').onclick = (e) => { const el = e.target.closest('.li'); if (el && !rec && !busy) { cur = +el.dataset.i; msg(''); render(); } };
+$('takes').onclick = async (e) => {
+  const el = e.target.closest('.take'); if (!el) return;
+  const n = +el.dataset.n;
+  play(n);
+  if (e.detail === 2 || e.shiftKey) {} // play only
+  else { await choose(n); render(); }
+};
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT') return;
+  const k = e.key;
+  if (k === ' ') { e.preventDefault(); rec ? stopRec() : startRec(); }
+  else if (k === 'Enter') { e.preventDefault(); good(); }
+  else if (k === 'r' || k === 'R') retake();
+  else if (k === 'p' || k === 'P') play();
+  else if (k === 'ArrowRight') go(1);
+  else if (k === 'ArrowLeft') go(-1);
+});
+// Buttons should not keep keyboard focus (Space would click them again).
+document.querySelectorAll('button').forEach((b) => b.addEventListener('mouseup', () => b.blur()));
+
+load();
+openMic().catch((e) => msg('মাইকের অনুমতি দিন (ঠিকানাবারের মাইক আইকন)। ' + e.message));
+meterLoop();
+</script>
+</body>
+</html>
